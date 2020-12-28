@@ -9,6 +9,7 @@ import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
+import team.dev.blog.view.MainFrame;
 
 import javax.swing.*;
 import java.time.LocalDateTime;
@@ -27,7 +28,10 @@ public class DataProducer {
 
     private String sessionId;
 
-    public DataProducer(ConcurrentLinkedQueue<String> queue, ConcurrentLinkedQueue<String> idQueue) {
+    private boolean stop = true;
+
+    public DataProducer(ConcurrentLinkedQueue<String> queue, ConcurrentLinkedQueue<String> idQueue, Properties properties) {
+        this.properties = properties;
         this.queue = queue;
         this.idQueue = idQueue;
         this.webClient = WebClient.builder()
@@ -42,11 +46,18 @@ public class DataProducer {
                 .baseUrl("http://ndev.co.kr")
                 .clientConnector(new ReactorClientHttpConnector(HttpClient.create().compress(true)))
                 .build();
-        this.getSession();
-        this.login();
+        if (!this.getSession() || !this.login()) {
+            JOptionPane.showMessageDialog(MainFrame.thisFrame, "웹 사이트 로그인에 실패했습니다.");
+            System.exit(0);
+        } else {
+            stop = false;
+        }
     }
 
     public void produce() {
+        if (stop) {
+            return;
+        }
         while (idQueue.size() != 0) {
             Stream.generate(idQueue::poll)
                     .limit(3)
@@ -83,7 +94,7 @@ public class DataProducer {
         }
     }
 
-    private void login() {
+    private boolean login() {
         var responseEntity = this.webClient.post()
                 .uri("/login_proc.php")
                 .header("Referer", "http://ndev.co.kr/login.php")
@@ -96,22 +107,20 @@ public class DataProducer {
                 .retrieve()
                 .toBodilessEntity()
                 .block();
-        if (responseEntity == null || !responseEntity.getStatusCode().equals(HttpStatus.OK)) {
-            log.info("로그인 실패로 워커 종료");
-        }
+        return responseEntity != null && responseEntity.getStatusCode().equals(HttpStatus.OK) && !responseEntity.getHeaders().containsKey("Vary");
     }
 
-    private void getSession() {
+    private boolean getSession() {
         var responseEntity = this.webClient.get()
                 .uri("/notice.php")
                 .retrieve()
                 .toBodilessEntity()
                 .block();
         if (responseEntity == null) {
-            log.error("세션 획득 실패로 워커 종료");
-            return;
+            return false;
         }
         String setCookie = Objects.requireNonNull(responseEntity.getHeaders().get("Set-Cookie")).toString();
         sessionId = setCookie.split(";")[0].split("=")[1];
+        return true;
     }
 }

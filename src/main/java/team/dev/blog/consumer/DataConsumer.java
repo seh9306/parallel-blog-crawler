@@ -21,14 +21,14 @@ public class DataConsumer implements ApplicationRunner {
     @Override
     public void run(ApplicationArguments args) throws Exception {
         while (true) {
-            if(queue.size() > 0) {
+            if (queue.size() > 0) {
                 BufferedWriter bufferedWriter;
                 try {
                     if (Files.exists(Path.of("output.csv"))) {
-                        bufferedWriter = new BufferedWriter(new FileWriter("output.csv", Charset.forName("EUC-KR"),true));
+                        bufferedWriter = new BufferedWriter(new FileWriter("output.csv", Charset.forName("EUC-KR"), true));
                     } else {
                         bufferedWriter = new BufferedWriter(new FileWriter("output.csv", Charset.forName("EUC-KR")));
-                        bufferedWriter.write("아이디,블로그 생성일,지수");
+                        bufferedWriter.write("아이디,전일 방문자,블로그 생성일,지수,링크,수집날짜");
                         bufferedWriter.newLine();
                     }
                 } catch (FileNotFoundException e) {
