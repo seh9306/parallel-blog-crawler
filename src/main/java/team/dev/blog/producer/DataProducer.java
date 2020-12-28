@@ -10,7 +10,11 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
+import javax.swing.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Stream;
 
@@ -45,26 +49,37 @@ public class DataProducer {
     public void produce() {
         while (idQueue.size() != 0) {
             Stream.generate(idQueue::poll)
-                    .limit(2)
+                    .limit(3)
                     .filter(Objects::nonNull)
-                    .forEach(id -> webClient.post()
-                            .uri("/r/rproc.php")
-                            .body(BodyInserters.fromFormData("userid", "doorihana79"))
-                            .header("Referer", "http://ndev.co.kr/r/")
-                            .header("Cookie", "PHPSESSID=" + sessionId + "; userid=damdi3")
-                            .retrieve()
-                            .bodyToMono(String.class)
-                            .subscribe(body -> {
-                                if (body == null || body.isEmpty()) {
-                                    queue.add(id);
-                                    return;
-                                }
-                                log.info(id);
-                                Document document = Jsoup.parse(body);
-                                Elements blogCreationDate = document.select("div:nth-child(1) > div:nth-child(2) > div > div.panel-body");
-                                Elements indices = document.select("div:nth-child(3) > div:nth-child(4) > div > div.panel-body > b > font");
-                                queue.add(id + "," + blogCreationDate.text() + "," + indices.text());
-                            }));
+                    .forEach(id -> {
+                        String body = webClient.post()
+                                .uri("/r/rproc.php")
+                                .body(BodyInserters.fromFormData("userid", id))
+                                .header("Referer", "http://ndev.co.kr/r/")
+                                .header("Cookie", "PHPSESSID=" + sessionId + "; userid=" + properties.get("id"))
+                                .retrieve()
+                                .bodyToMono(String.class)
+                                .block();
+                        if (body == null || body.isEmpty()) {
+                            queue.add(id);
+                            return;
+                        }
+                        Document document = Jsoup.parse(body);
+                        Elements yesterdayVisitors = document.select("div:nth-child(1) > div:nth-child(8) > div > div.panel-body");
+                        Elements blogCreationDate = document.select("div:nth-child(1) > div:nth-child(2) > div > div.panel-body");
+                        Elements indices = document.select("div:nth-child(3) > div:nth-child(4) > div > div.panel-body > b > font");
+                        ;
+                        if (indices != null && indices.text().trim().isEmpty()) {
+                            indices = document.select("div:nth-child(3) > div:nth-child(4) > div > div.panel-body > b");
+                        }
+
+                        queue.add(id
+                                + "," + yesterdayVisitors.text().replaceAll(",", "")
+                                + "," + blogCreationDate.text()
+                                + "," + indices.text()
+                                + ",https://blog.naver.com/" + id
+                                + "," + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+                    });
         }
     }
 
