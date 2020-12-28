@@ -26,8 +26,32 @@ public class MainFrame extends JFrame {
         ClassPathResource classPathResource = new ClassPathResource("ico/search_cat.png");
         setIconImage(ImageIO.read(classPathResource.getURL()));
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(200,200);
-        setContentPane(new MainPanel(queue));
+
+        Dimension dim = Toolkit.getDefaultToolkit().getScreenSize();
+        setLocation(dim.width / 2 - this.getSize().width / 2, dim.height / 2 - this.getSize().height / 2);
+
+        setContentPane(new MainPanel(queue, properties()));
+
         setVisible(true);
+    }
+
+    public Properties properties() throws IOException {
+        try {
+            Properties properties = new Properties();
+            properties.load(new FileInputStream(System.getProperty("user.dir") + "\\config.txt"));
+            if (!properties.containsKey("id")) {
+                JOptionPane.showMessageDialog(this, "id 값이 설정되어 있지 않습니다.");
+                System.exit(0);
+            }
+            if (!properties.containsKey("pw")) {
+                JOptionPane.showMessageDialog(this, "pw 값이 설정되어 있지 않습니다.");
+                System.exit(0);
+            }
+            return properties;
+        } catch (FileNotFoundException e) {
+            JOptionPane.showMessageDialog(this, "config.txt 파일을 읽을 수 없습니다.");
+            System.exit(0);
+            return new Properties();
+        }
     }
 }

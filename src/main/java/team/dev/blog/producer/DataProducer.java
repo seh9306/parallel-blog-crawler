@@ -19,6 +19,7 @@ public class DataProducer {
     private final WebClient webClient;
     private final ConcurrentLinkedQueue<String> queue;
     private final ConcurrentLinkedQueue<String> idQueue;
+    private final Properties properties;
 
     private String sessionId;
 
@@ -73,10 +74,10 @@ public class DataProducer {
                 .header("Referer", "http://ndev.co.kr/login.php")
                 .header("Origin", "http://ndev.co.kr")
                 .header("Content-Type", "application/x-www-form-urlencoded")
-                .header("Cookie", "PHPSESSID=" + sessionId + "; userid=damdi3")
+                .header("Cookie", "PHPSESSID=" + sessionId + "; userid=" + properties.get("id"))
                 .body(
-                        BodyInserters.fromFormData("userid", "damdi3")
-                                .with("password", "qhdekf22"))
+                        BodyInserters.fromFormData("userid", properties.get("id").toString())
+                                .with("password", properties.get("pw").toString()))
                 .retrieve()
                 .toBodilessEntity()
                 .block();
